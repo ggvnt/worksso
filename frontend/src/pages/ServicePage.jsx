@@ -1,13 +1,11 @@
-// src/pages/ServicePage.js
 import React, { useEffect, useState } from "react";
 import { serviceStore } from "../store/serviceStore";
 import { categoryStore } from "../store/categoryStore";
 import { BsStarFill, BsFilter } from "react-icons/bs";
 import { Phone, X, Search } from "lucide-react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
-import { useSearch } from "../contexts/SearchContext";
 
 const ServicePage = () => {
   const { services, fetchAllServices, availableFilters } = serviceStore();
@@ -15,15 +13,12 @@ const ServicePage = () => {
   const [loading, setLoading] = useState(false);
   const { categoryId } = useParams();
   const [showFilters, setShowFilters] = useState(false);
-  const location = useLocation();
-  const { searchQuery } = useSearch();
-
   const [filters, setFilters] = useState({
     category: categoryId || '',
     minPrice: null,
     maxPrice: null,
     location: '',
-    search: searchQuery || ''
+    search: ''
   });
 
   useEffect(() => {
@@ -32,6 +27,13 @@ const ServicePage = () => {
       try {
         const categoryResponse = await categoryStore.getState().fetchCategories();
         setCategories(categoryResponse);
+        
+        // Create ID-to-name mapping
+        const map = categoryResponse.reduce((acc, cat) => {
+          acc[cat._id] = cat.name;
+          return acc;
+        }, {});
+        setCategoryMap(map);
         
         await fetchAllServices({ ...filters, page: 1, limit: 10 });
       } catch (error) {
@@ -50,17 +52,6 @@ const ServicePage = () => {
   }, [categoryId]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const searchParam = params.get('search');
-    
-    if (searchParam) {
-      setFilters(prev => ({ ...prev, search: searchParam }));
-    } else if (searchQuery) {
-      setFilters(prev => ({ ...prev, search: searchQuery }));
-    }
-  }, [location.search, searchQuery]);
-
-  useEffect(() => {
     const applyFilters = async () => {
       setLoading(true);
       try {
@@ -74,7 +65,7 @@ const ServicePage = () => {
 
     const timer = setTimeout(() => {
       applyFilters();
-    }, 500);
+    }, 500); // Debounce to prevent rapid API calls
 
     return () => clearTimeout(timer);
   }, [filters]);
@@ -104,6 +95,7 @@ const ServicePage = () => {
     });
   };
 
+  // Calculate active filters count for display
   const activeFiltersCount = Object.values(filters).filter(
     value => value !== '' && value !== null && !(Array.isArray(value) && value.length === 0)
   ).length;
@@ -111,6 +103,7 @@ const ServicePage = () => {
   return (
     <div className="py-8 mx-auto">
       <div className="flex flex-col md:flex-row gap-4">
+        {/* Mobile Filter Toggle */}
         <div className="md:hidden flex justify-between items-center p-4 bg-white shadow-md rounded-lg">
           <h2 className="text-xl font-semibold text-gray-800">Services</h2>
           <button 
@@ -122,6 +115,7 @@ const ServicePage = () => {
           </button>
         </div>
 
+        {/* Filter Section - Desktop */}
         <div className={`${showFilters ? 'block' : 'hidden'} md:block flex-shrink-0 w-64 p-4 bg-white rounded-lg shadow-md`}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-700">Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}</h3>
@@ -133,6 +127,7 @@ const ServicePage = () => {
             </button>
           </div>
 
+          {/* Search Filter */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">Search</label>
             <div className="relative">
@@ -147,6 +142,7 @@ const ServicePage = () => {
             </div>
           </div>
 
+          {/* Category Filter */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">Category</label>
             <select
@@ -161,6 +157,7 @@ const ServicePage = () => {
             </select>
           </div>
 
+          {/* Price Range Filter */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">
               Price Range: 
@@ -191,6 +188,7 @@ const ServicePage = () => {
             </div>
           </div>
 
+          {/* Location Filter */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">Location</label>
             <select
@@ -206,7 +204,9 @@ const ServicePage = () => {
           </div>
         </div>
 
+        {/* Services Section */}
         <div className="flex-1">
+          {/* Active Filters Display */}
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4 p-4 bg-white rounded-lg shadow-md">
               {filters.search && (
@@ -261,6 +261,7 @@ const ServicePage = () => {
   );
 };
 
+// Extracted FilterPill component for better readability
 const FilterPill = ({ label, onRemove }) => (
   <div className="flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
     <span>{label}</span>
@@ -273,7 +274,9 @@ const FilterPill = ({ label, onRemove }) => (
   </div>
 );
 
+// Extracted Service Card Component for better readability
 const ServiceCard = ({ service }) => {
+  // Get category name with fallback
   const categoryName = service.category?.name || 
                       (typeof service.category === 'string' ? service.category : 'Uncategorized');
 
