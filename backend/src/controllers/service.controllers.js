@@ -216,7 +216,7 @@ export const renewService = async (req, res) => {
       id,
       {
         isActive: true,
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // Reset to 10 minutes from now
+        expiresAt: new Date(Date.now() + 20 * 60 * 1000), // Reset to 10 minutes from now
       },
       { new: true }
     );
