@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "../store/useAuthStore";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, X, Search } from "lucide-react";
 
-const Navbar = ({ data = [] }) => {
+const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -11,11 +11,22 @@ const Navbar = ({ data = [] }) => {
   const menuRef = useRef(null);
   const searchRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout, authUser } = useAuthStore();
-  const [search, setSearch] = useState(data.search || "");
+  const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  
+  // Initialize search from URL when component mounts or location changes
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const searchQuery = searchParams.get('search');
+    if (searchQuery) {
+      setSearch(decodeURIComponent(searchQuery));
+    } else {
+      setSearch("");
+    }
+  }, [location.search]);
 
-  // Toggle functions
   const toggleDropdown = () => setIsDropdownOpen(prev => !prev);
   const toggleMenu = () => setIsMenuOpen(prev => !prev);
   const toggleSearch = () => {
@@ -46,14 +57,29 @@ const Navbar = ({ data = [] }) => {
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
-    data.setSearch?.(e.target.value);
     setSuggestions(
       e.target.value
-        ? ["Doctor", "Appointment", "Pharmacy", "Hospital", "Clinic"].filter(
+        ? ["aaa"].filter(
             (item) => item.toLowerCase().includes(e.target.value.toLowerCase())
           )
         : []
     );
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (search.trim()) {
+      navigate(`/servicePage?search=${encodeURIComponent(search)}`);
+    } else {
+      navigate('/servicePage');
+    }
+    setIsSearchActive(false);
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearch(suggestion);
+    navigate(`/servicePage?search=${encodeURIComponent(suggestion)}`);
+    setIsSearchActive(false);
   };
 
   return (
@@ -69,34 +95,32 @@ const Navbar = ({ data = [] }) => {
 
         {/* Desktop Search Bar */}
         <div className="relative flex-grow hidden max-w-md mx-4 md:block">
-          <div className="relative" ref={searchRef}>
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search services..."
-              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
-              onFocus={() => setIsSearchActive(true)}
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-            {isSearchActive && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
-                {suggestions.map((item, index) => (
-                  <div
-                    key={index}
-                    className="px-4 py-2 cursor-pointer hover:bg-blue-50"
-                    onClick={() => {
-                      setSearch(item);
-                      data.setSearch?.(item);
-                      setIsSearchActive(false);
-                    }}
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <form onSubmit={handleSearchSubmit} ref={searchRef}>
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={handleSearch}
+                placeholder="Search services..."
+                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
+                onFocus={() => setIsSearchActive(true)}
+              />
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+              {isSearchActive && suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                  {suggestions.map((item, index) => (
+                    <div
+                      key={index}
+                      className="px-4 py-2 cursor-pointer hover:bg-blue-50"
+                      onClick={() => handleSuggestionClick(item)}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </form>
         </div>
 
         {/* Mobile Search Toggle */}
@@ -157,34 +181,32 @@ const Navbar = ({ data = [] }) => {
       {/* Mobile Search Bar */}
       {isSearchActive && (
         <div className="p-3 bg-white border-t border-gray-200 md:hidden">
-          <div className="relative" ref={searchRef}>
-            <input
-              type="text"
-              value={search}
-              onChange={handleSearch}
-              placeholder="Search services..."
-              className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
-              autoFocus
-            />
-            <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-            {suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
-                {suggestions.map((item, index) => (
-                  <div
-                    key={index}
-                    className="px-4 py-2 cursor-pointer hover:bg-blue-50"
-                    onClick={() => {
-                      setSearch(item);
-                      data.setSearch?.(item);
-                      setIsSearchActive(false);
-                    }}
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <form onSubmit={handleSearchSubmit} ref={searchRef}>
+            <div className="relative">
+              <input
+                type="text"
+                value={search}
+                onChange={handleSearch}
+                placeholder="Search services..."
+                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
+                autoFocus
+              />
+              <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+              {suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 z-10 mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                  {suggestions.map((item, index) => (
+                    <div
+                      key={index}
+                      className="px-4 py-2 cursor-pointer hover:bg-blue-50"
+                      onClick={() => handleSuggestionClick(item)}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </form>
         </div>
       )}
 

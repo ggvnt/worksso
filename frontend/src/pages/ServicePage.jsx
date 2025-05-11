@@ -1,17 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { serviceStore } from "../store/serviceStore";
 import { categoryStore } from "../store/categoryStore";
 import { BsStarFill, BsFilter } from "react-icons/bs";
 import { Phone, X, Search } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 
 const ServicePage = () => {
   const { services, fetchAllServices, availableFilters } = serviceStore();
   const [categories, setCategories] = useState([]);
+  const [categoryMap, setCategoryMap] = useState({});
   const [loading, setLoading] = useState(false);
   const { categoryId } = useParams();
+  const location = useLocation();
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     category: categoryId || '',
@@ -20,6 +22,27 @@ const ServicePage = () => {
     location: '',
     search: ''
   });
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef(null);
+
+  // Initialize search from URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const searchQuery = searchParams.get('search');
+    
+    if (searchQuery) {
+      setFilters(prev => ({
+        ...prev,
+        search: decodeURIComponent(searchQuery)
+      }));
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        search: ''
+      }));
+    }
+  }, [location.search]);
 
   useEffect(() => {
     setLoading(true);
@@ -75,6 +98,33 @@ const ServicePage = () => {
       ...prev,
       [name]: value
     }));
+
+    // Generate suggestions when search term changes
+    if (name === 'search') {
+      if (value.trim()) {
+        // Generate suggestions based on available services or common terms
+        const serviceTitles = services.map(service => service.title);
+        const commonTerms = ["Doctor", "Appointment", "Pharmacy", "Hospital", "Clinic"];
+        const allSuggestions = [...new Set([...serviceTitles, ...commonTerms])];
+        
+        const filtered = allSuggestions.filter(item => 
+          item.toLowerCase().includes(value.toLowerCase())
+        );
+        setSearchSuggestions(filtered);
+        setShowSuggestions(true);
+      } else {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setFilters(prev => ({
+      ...prev,
+      search: suggestion
+    }));
+    setShowSuggestions(false);
   };
 
   const handlePriceChange = (value) => {
@@ -93,7 +143,20 @@ const ServicePage = () => {
       location: '',
       search: ''
     });
+    setSearchSuggestions([]);
+    setShowSuggestions(false);
   };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Calculate active filters count for display
   const activeFiltersCount = Object.values(filters).filter(
@@ -106,7 +169,7 @@ const ServicePage = () => {
         {/* Mobile Filter Toggle */}
         <div className="md:hidden flex justify-between items-center p-4 bg-white shadow-md rounded-lg">
           <h2 className="text-xl font-semibold text-gray-800">Services</h2>
-          <button 
+          <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg"
           >
@@ -119,7 +182,7 @@ const ServicePage = () => {
         <div className={`${showFilters ? 'block' : 'hidden'} md:block flex-shrink-0 w-64 p-4 bg-white rounded-lg shadow-md`}>
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-700">Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}</h3>
-            <button 
+            <button
               onClick={resetFilters}
               className="text-sm text-blue-600 hover:underline"
             >
@@ -127,8 +190,8 @@ const ServicePage = () => {
             </button>
           </div>
 
-          {/* Search Filter */}
-          <div className="mb-6">
+          {/* Search Filter with Suggestions */}
+          <div className="mb-6 relative" ref={searchRef}>
             <label className="block mb-2 text-sm font-medium text-gray-700">Search</label>
             <div className="relative">
               <input
@@ -136,10 +199,24 @@ const ServicePage = () => {
                 placeholder="Search services..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
+                onFocus={() => filters.search && setShowSuggestions(true)}
                 className="w-full p-2 pl-10 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
               />
               <Search className="absolute left-3 top-3 text-gray-400" size={16} />
             </div>
+            {showSuggestions && searchSuggestions.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                {searchSuggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    className="px-4 py-2 cursor-pointer hover:bg-blue-50"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Category Filter */}
@@ -160,7 +237,7 @@ const ServicePage = () => {
           {/* Price Range Filter */}
           <div className="mb-6">
             <label className="block mb-2 text-sm font-medium text-gray-700">
-              Price Range: 
+              Price Range:
               {(filters.minPrice !== null || filters.maxPrice !== null) && (
                 <span className="ml-2 font-normal">
                   ${filters.minPrice || availableFilters.priceRange[0]} - ${filters.maxPrice || availableFilters.priceRange[1]}
@@ -210,19 +287,19 @@ const ServicePage = () => {
           {activeFiltersCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 mb-4 p-4 bg-white rounded-lg shadow-md">
               {filters.search && (
-                <FilterPill 
+                <FilterPill
                   label={`Search: ${filters.search}`}
                   onRemove={() => handleFilterChange('search', '')}
                 />
               )}
               {filters.category && (
-                <FilterPill 
-                  label={`Category: ${categories.find(c => c._id === filters.category)?.name || filters.category}`}
+                <FilterPill
+                  label={`Category: ${categoryMap[filters.category] || filters.category}`}
                   onRemove={() => handleFilterChange('category', '')}
                 />
               )}
               {(filters.minPrice !== null || filters.maxPrice !== null) && (
-                <FilterPill 
+                <FilterPill
                   label={`Price: $${filters.minPrice || availableFilters.priceRange[0]} - $${filters.maxPrice || availableFilters.priceRange[1]}`}
                   onRemove={() => {
                     handleFilterChange('minPrice', null);
@@ -231,7 +308,7 @@ const ServicePage = () => {
                 />
               )}
               {filters.location && (
-                <FilterPill 
+                <FilterPill
                   label={`Location: ${filters.location}`}
                   onRemove={() => handleFilterChange('location', '')}
                 />
@@ -246,7 +323,7 @@ const ServicePage = () => {
                 <div className="text-xl text-center col-span-full">Loading...</div>
               ) : services.length > 0 ? (
                 services.map((service) => (
-                  <ServiceCard key={service._id} service={service} />
+                  <ServiceCard key={service._id} service={service} categoryMap={categoryMap} />
                 ))
               ) : (
                 <div className="text-xl text-center col-span-full">
@@ -261,11 +338,10 @@ const ServicePage = () => {
   );
 };
 
-// Extracted FilterPill component for better readability
 const FilterPill = ({ label, onRemove }) => (
   <div className="flex items-center px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
     <span>{label}</span>
-    <button 
+    <button
       onClick={onRemove}
       className="ml-2 text-blue-600 hover:text-blue-800"
     >
@@ -274,11 +350,10 @@ const FilterPill = ({ label, onRemove }) => (
   </div>
 );
 
-// Extracted Service Card Component for better readability
-const ServiceCard = ({ service }) => {
+const ServiceCard = ({ service, categoryMap }) => {
   // Get category name with fallback
   const categoryName = service.category?.name || 
-                      (typeof service.category === 'string' ? service.category : 'Uncategorized');
+                      (typeof service.category === 'string' ? categoryMap[service.category] : 'Uncategorized');
 
   return (
     <div className="overflow-hidden transition duration-300 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">

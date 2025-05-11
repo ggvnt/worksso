@@ -109,7 +109,9 @@ export const serviceStore = create((set, get) => ({
   updateService: async (id, data) => {
     set({ isUpdatingService: true, error: null });
     try {
-      const res = await axiosInstance.put(`/service/${id}`, data);
+      // const res = await axiosInstance.put(`/service/${id}`, data);
+      const res = await axiosInstance.put(`/service/update-profile`, data);
+
       set((state) => ({
         services: state.services.map((service) =>
           service._id === id ? res.data : service
