@@ -69,7 +69,7 @@ const ContactPage = () => {
                   value={formData.name}
                   onChange={handleChange}
                   className="w-full p-3 mt-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="John Doe"
+                  placeholder="Your Name"
                   required
                 />
               </div>
