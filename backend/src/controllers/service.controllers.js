@@ -361,3 +361,111 @@ export const getServiceByCategoryID = async (req, res) => {
       .json({ message: "Internal server error", error: error.message });
   }
 };
+
+// Get a single service by ID
+export const getServiceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid service ID format" });
+    }
+
+    const service = await Service.findById(id)
+      .populate("userId", "fullName email")
+      .populate("category", "name"); // Add category population
+
+    if (!service) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    // Optional: Check if service is active (uncomment if needed)
+    // if (!service.isActive) {
+    //   return res.status(403).json({ 
+    //     message: "This service is no longer active",
+    //     service // You might still want to return the service data
+    //   });
+    // }
+
+    res.status(200).json(service);
+  } catch (error) {
+    console.error("Error in getServiceById controller:", error.message);
+    
+    // More specific error handling
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid service ID format" });
+    }
+    
+    res.status(500).json({ 
+      message: "Internal server error", 
+      error: error.message 
+    });
+  }
+};
+
+
+// Mark service as inactive
+export const markServiceInactive = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedService = await Service.findByIdAndUpdate(
+      id,
+      {
+        isActive: false,
+      },
+      { new: true }
+    );
+
+    if (!updatedService) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    res.status(200).json(updatedService);
+  } catch (error) {
+    console.error("Error in markServiceInactive controller:", error.message);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+// // Get all services (admin only)
+// export const getAllServicesForAdmin = async (req, res) => {
+//   try {
+//     const services = await Service.find()
+//       .populate("userId", "fullName email")
+//       .sort({ createdAt: -1 });
+
+//     res.status(200).json(services);
+//   } catch (error) {
+//     console.error("Error in getAllServicesForAdmin:", error.message);
+//     res.status(500).json({ message: "Internal server error", error: error.message });
+//   }
+// };
+
+// // Admin delete service
+// export const adminDeleteService = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const service = await Service.findByIdAndDelete(id);
+    
+//     if (!service) {
+//       return res.status(404).json({ message: "Service not found" });
+//     }
+
+//     // Delete images from Cloudinary if they exist
+//     if (service.images && service.images.length > 0) {
+//       await Promise.all(
+//         service.images.map(async (imageUrl) => {
+//           const publicId = imageUrl.split("/").pop().split(".")[0];
+//           await cloudinary.uploader.destroy(`services/${publicId}`);
+//         })
+//       );
+//     }
+
+//     res.status(200).json({ message: "Service deleted successfully" });
+//   } catch (error) {
+//     console.error("Error in adminDeleteService:", error.message);
+//     res.status(500).json({ message: "Internal server error", error: error.message });
+//   }
+// };

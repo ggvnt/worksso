@@ -64,7 +64,7 @@ const AdminDashboard = () => {
             </a>
           </li>
           <li className="mb-4">
-            <a href="/settings" className="text-white hover:text-blue-300">
+            <a href="/admin/services" className="text-white hover:text-blue-300">
               Settings
             </a>
           </li>

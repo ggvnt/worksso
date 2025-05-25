@@ -19,6 +19,8 @@ import ContactPage from "./pages/ContactPage.jsx";
 import EmailVerification from "./pages/EmailVerification.jsx";
 import ForgetPasswordPage from "./pages/ForgetPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
+import ServiceDetails from "./pages/ServiceDetails.jsx";
+import AdminServicesPage from "./pages/AdminServicesPage.jsx";
 
 const App = () => {
   const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
@@ -92,6 +94,7 @@ const App = () => {
               )
             }
           />
+          <Route path="/admin/services" element={<AdminServicesPage />} />
 
           {/* Protected Service Update Route */}
           <Route
@@ -100,6 +103,14 @@ const App = () => {
               authUser ? <UpdateServiceModal /> : <Navigate to="/login" />
             }
           />
+
+          <Route
+            path="/servicesdetails/:id"
+            element={
+              authUser ? <ServiceDetails /> : <Navigate to="/login" />
+            }
+          />
+          
         </Routes>
       </div>
       <Footer />

@@ -9,6 +9,8 @@ import {
   getServiceByCategoryID,
   getServicesByUserId,
   renewService,
+  getServiceById,
+  markServiceInactive,
 } from "../controllers/service.controllers.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 
@@ -19,5 +21,7 @@ router.put("/:id", protectRoute, updateService);
 router.delete("/:id", protectRoute, deleteService);
 router.get("/category/:id", getServiceByCategoryID);
 router.put("/renew/:id", protectRoute, renewService); // Add renew route
+router.get("/:id", protectRoute, getServiceById)
+router.put("/inactive/:id", protectRoute, markServiceInactive);
 
 export default router;

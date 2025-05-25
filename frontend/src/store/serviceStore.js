@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/useAuthStore";
 
 export const serviceStore = create((set, get) => ({
   services: [],
+  currentService: null,
   totalServices: 0,
   availableFilters: {
     categories: [],
@@ -12,11 +13,38 @@ export const serviceStore = create((set, get) => ({
     priceRange: [0, 1000]
   },
   isFetchingServices: false,
+  isFetchingSingleService: false,
   isCreatingService: false,
   isUpdatingService: false,
   isDeletingService: false,
   isRenewingService: false,
+  isMarkingInactive: false,
   error: null,
+
+  // Get single service by ID
+  getServiceById: async (id) => {
+    set({ isFetchingSingleService: true, error: null });
+    try {
+      const res = await axiosInstance.get(`/service/${id}`);
+      if (!res.data) {
+        throw new Error("No data received from server");
+      }
+      set({ currentService: res.data });
+      return res.data;
+    } catch (error) {
+      const errMsg = error.response?.data?.message || error.message || "Failed to fetch service";
+      set({ error: errMsg, isFetchingSingleService: false });
+      toast.error(errMsg);
+      throw error;
+    } finally {
+      set({ isFetchingSingleService: false });
+    }
+  },
+
+  // Clear current single service from store
+  clearCurrentService: () => {
+    set({ currentService: null });
+  },
 
   // Fetch services with comprehensive filtering
   fetchAllServices: async (filters = {}) => {
@@ -109,9 +137,7 @@ export const serviceStore = create((set, get) => ({
   updateService: async (id, data) => {
     set({ isUpdatingService: true, error: null });
     try {
-      // const res = await axiosInstance.put(`/service/${id}`, data);
-      const res = await axiosInstance.put(`/service/update-profile`, data);
-
+      const res = await axiosInstance.put(`/service/${id}`, data);
       set((state) => ({
         services: state.services.map((service) =>
           service._id === id ? res.data : service
@@ -167,6 +193,28 @@ export const serviceStore = create((set, get) => ({
       throw error;
     } finally {
       set({ isRenewingService: false });
+    }
+  },
+
+  // Mark service as inactive
+  markServiceInactive: async (id) => {
+    set({ isMarkingInactive: true, error: null });
+    try {
+      const res = await axiosInstance.put(`/service/inactive/${id}`);
+      set((state) => ({
+        services: state.services.map((service) =>
+          service._id === id ? res.data : service
+        ),
+      }));
+      toast.success("Service marked as inactive");
+      return res.data;
+    } catch (error) {
+      console.error("Error in markServiceInactive:", error);
+      set({ error: error.response?.data?.message || "Failed to mark service inactive" });
+      toast.error(error.response?.data?.message || "Failed to mark service inactive");
+      throw error;
+    } finally {
+      set({ isMarkingInactive: false });
     }
   },
 

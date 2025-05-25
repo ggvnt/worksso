@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BsStarFill, BsClock } from "react-icons/bs";
 import { Phone, AlertCircle, RefreshCw } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { serviceStore } from "../store/serviceStore";
 import { categoryStore } from "../store/categoryStore";
 import { toast } from "react-hot-toast";
@@ -40,9 +40,7 @@ const HomePage = () => {
       .filter((service) => service.isActive)
       .map((service) => ({
         ...service,
-        minutesLeft: Math.ceil(
-          (new Date(service.expiresAt) - now) / (1000 * 60)
-        ),
+        minutesLeft: Math.ceil((new Date(service.expiresAt) - now) / (1000 * 60)),
         isExpiringSoon:
           Math.ceil((new Date(service.expiresAt) - now) / (1000 * 60)) <= 5,
       }));
@@ -153,8 +151,9 @@ const HomePage = () => {
           ) : filteredServices?.length > 0 ? (
             <div className="grid grid-cols-1 gap-8 mt-8 sm:grid-cols-2 lg:grid-cols-3">
               {filteredServices.map((service) => (
-                <div
+                <Link
                   key={service._id}
+                  to={`/servicesdetails/${service._id}`}
                   className="relative overflow-hidden transition-all duration-300 transform bg-gray-100 rounded-lg shadow-md hover:scale-105"
                 >
                   {service.isExpiringSoon && (
@@ -175,17 +174,11 @@ const HomePage = () => {
 
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex text-yellow-500">
-                        {Array(service.rating || 5)
-                          .fill()
-                          .map((_, i) => (
-                            <BsStarFill key={i} size={18} />
-                          ))}
-                      </div>
                       {service.isExpiringSoon && (
                         <button
                           onClick={(e) => {
-                            e.stopPropagation();
+                            e.preventDefault(); // Prevent navigation
+                            e.stopPropagation(); // Stop event bubbling
                             handleRenewService(service._id);
                           }}
                           className="flex items-center px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
@@ -203,17 +196,13 @@ const HomePage = () => {
                       {service.description}
                     </p>
 
-                    <div className="flex items-center justify-between mt-4">
+                    {/* <div className="flex items-center justify-between mt-4">
                       <div className="text-xl font-bold text-gray-900">
                         ${service.price}
                       </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Phone size={16} className="mr-2" />
-                        {service.number || "N/A"}
-                      </div>
-                    </div>
+                    </div> */}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (

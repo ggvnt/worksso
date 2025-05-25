@@ -18,6 +18,7 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
+  EyeOff,
 } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { serviceStore } from "../store/serviceStore";
@@ -27,6 +28,7 @@ import ServiceForm from "./ServiceForm";
 import UpdateServiceModal from "./UpdateServiceModalPage";
 import ServiceStatusBadge from "../Services/ServiceStatusBadge.jsx";
 import ServiceAnalyticsChart from "../Services/ServiceAnalyticsChart.jsx";
+
 const ProfilePage = () => {
   // State and store hooks
   const { authUser, logout, isUpdatingProfile, updateProfile } = useAuthStore();
@@ -36,7 +38,9 @@ const ProfilePage = () => {
     deleteService,
     updateService,
     renewService,
+    markServiceInactive,
     isRenewingService,
+    isMarkingInactive,
   } = serviceStore();
   const navigate = useNavigate();
   const servicesEndRef = useRef(null);
@@ -89,6 +93,11 @@ const ProfilePage = () => {
         expired = 0;
 
       services.forEach((service) => {
+        if (!service.isActive) {
+          expired++;
+          return;
+        }
+
         const expiryDate = new Date(service.expiresAt);
         const minutesLeft = Math.ceil((expiryDate - now) / (1000 * 60));
 
@@ -135,6 +144,8 @@ const ProfilePage = () => {
     if (filter !== "all") {
       const now = new Date();
       result = result.filter((service) => {
+        if (!service.isActive) return filter === "expired";
+        
         const expiryDate = new Date(service.expiresAt);
         const minutesLeft = Math.ceil((expiryDate - now) / (1000 * 60));
 
@@ -209,16 +220,27 @@ const ProfilePage = () => {
   const handleRenewService = async (serviceId) => {
     try {
       await renewService(serviceId);
-      toast.success("Service renewed for another 10 minutes!");
+      toast.success("Service renewed successfully!");
     } catch (error) {
       toast.error("Failed to renew service");
       console.error("Error renewing service:", error);
     }
   };
 
+  const handleMarkInactive = async (serviceId) => {
+    try {
+      await markServiceInactive(serviceId);
+      toast.success("Service marked as inactive");
+    } catch (error) {
+      toast.error("Failed to mark service inactive");
+      console.error("Error marking service inactive:", error);
+    }
+  };
+
   const handleRenewAllExpired = async () => {
     try {
       const expiredServices = filteredServices.filter((service) => {
+        if (!service.isActive) return true;
         const expiryDate = new Date(service.expiresAt);
         return expiryDate <= new Date();
       });
@@ -233,7 +255,15 @@ const ProfilePage = () => {
     }
   };
 
-  const getServiceStatus = (expiresAt) => {
+  const getServiceStatus = (expiresAt, isActive) => {
+    if (!isActive) {
+      return {
+        isExpired: true,
+        isExpiringSoon: false,
+        minutesLeft: 0,
+      };
+    }
+
     const now = new Date();
     const expiryDate = new Date(expiresAt);
     const minutesLeft = Math.ceil((expiryDate - now) / (1000 * 60));
@@ -256,6 +286,28 @@ const ProfilePage = () => {
 
   const toggleServiceExpand = (serviceId) => {
     setExpandedServiceId(expandedServiceId === serviceId ? null : serviceId);
+  };
+
+  // New handler functions for update modal
+  const openUpdateModal = (service) => {
+    setServiceToUpdate(service);
+    setIsUpdateModalOpen(true);
+  };
+
+  const closeUpdateModal = () => {
+    setIsUpdateModalOpen(false);
+    setServiceToUpdate(null);
+  };
+
+  const handleServiceUpdate = async (updatedService) => {
+    try {
+      await updateService(serviceToUpdate._id, updatedService);
+      toast.success("Service updated successfully");
+      closeUpdateModal();
+    } catch (error) {
+      toast.error("Failed to update service");
+      console.error("Error updating service:", error);
+    }
   };
 
   // Helper Components
@@ -297,9 +349,8 @@ const ProfilePage = () => {
                   {inactiveServicesCount !== 1 ? "s" : ""} Need Attention
                 </h3>
                 <p className="mt-1 text-sm text-orange-600">
-                  You have {inactiveServicesCount} expired service
-                  {inactiveServicesCount !== 1 ? "s" : ""}. Renew them to keep
-                  them active.
+                  You have {inactiveServicesCount} inactive service
+                  {inactiveServicesCount !== 1 ? "s" : ""}. Renew them to make them active.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -556,14 +607,14 @@ const ProfilePage = () => {
           {filteredServices && filteredServices.length > 0 ? (
             filteredServices.map((service) => {
               const { isExpired, isExpiringSoon, minutesLeft } =
-                getServiceStatus(service.expiresAt);
+                getServiceStatus(service.expiresAt, service.isActive);
               const isExpanded = expandedServiceId === service._id;
 
               return (
                 <div
                   key={service._id}
                   className={`p-4 bg-white rounded-lg shadow-sm transition-all duration-200 ${
-                    isExpired
+                    !service.isActive || isExpired
                       ? "border-l-4 border-red-500"
                       : isExpiringSoon
                       ? "border-l-4 border-yellow-500"
@@ -581,7 +632,7 @@ const ProfilePage = () => {
                         className="object-cover w-full h-full"
                       />
                       <ServiceStatusBadge
-                        isExpired={isExpired}
+                        isExpired={!service.isActive || isExpired}
                         isExpiringSoon={isExpiringSoon}
                         minutesLeft={minutesLeft}
                       />
@@ -596,7 +647,7 @@ const ProfilePage = () => {
                           </h2>
                           <div className="flex items-center mt-1">
                             <span className="text-sm font-medium text-gray-500">
-                              {service.category} •{" "}
+                              {} {" "}
                               {new Date(service.createdAt).toLocaleDateString()}
                             </span>
                           </div>
@@ -639,6 +690,26 @@ const ProfilePage = () => {
                             <MapPin className="w-4 h-4 mr-2 text-gray-500" />
                             <span>{service.location}</span>
                           </div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="mr-2">Status:</span>
+                            {!service.isActive ? (
+                              <span className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded">
+                                Inactive
+                              </span>
+                            ) : isExpired ? (
+                              <span className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded">
+                                Expired
+                              </span>
+                            ) : isExpiringSoon ? (
+                              <span className="px-2 py-1 text-xs font-medium text-white bg-yellow-500 rounded">
+                                Expiring Soon
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 text-xs font-medium text-white bg-green-500 rounded">
+                                Active
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -657,7 +728,7 @@ const ProfilePage = () => {
                         >
                           {isDeleting ? "Deleting..." : "Delete"}
                         </button>
-                        {(isExpiringSoon || isExpired) && (
+                        {service.isActive && (isExpiringSoon || isExpired) && (
                           <button
                             onClick={() => handleRenewService(service._id)}
                             className="flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700"
@@ -665,6 +736,16 @@ const ProfilePage = () => {
                           >
                             <RefreshCw className="w-4 h-4 mr-1" />
                             {isRenewingService ? "Renewing..." : "Renew"}
+                          </button>
+                        )}
+                        {service.isActive && (
+                          <button
+                            onClick={() => handleMarkInactive(service._id)}
+                            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-lg hover:bg-gray-700"
+                            disabled={isMarkingInactive}
+                          >
+                            <EyeOff className="w-4 h-4 mr-1" />
+                            {isMarkingInactive ? "Updating..." : "Mark Inactive"}
                           </button>
                         )}
                         <button

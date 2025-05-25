@@ -3,7 +3,7 @@ import { serviceStore } from "../store/serviceStore";
 import { categoryStore } from "../store/categoryStore";
 import { BsStarFill, BsFilter } from "react-icons/bs";
 import { Phone, X, Search } from "lucide-react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation ,Link } from "react-router-dom";
 import Slider from 'rc-slider';
 import 'rc-slider/assets/index.css';
 
@@ -25,6 +25,8 @@ const ServicePage = () => {
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef(null);
+
+  
 
   // Initialize search from URL
   useEffect(() => {
@@ -356,6 +358,7 @@ const ServiceCard = ({ service, categoryMap }) => {
                       (typeof service.category === 'string' ? categoryMap[service.category] : 'Uncategorized');
 
   return (
+    <Link to={`/servicesdetails/${service._id}`} className="block">
     <div className="overflow-hidden transition duration-300 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md">
       <img
         src={service.images?.[0] || "https://via.placeholder.com/150"}
@@ -364,23 +367,23 @@ const ServiceCard = ({ service, categoryMap }) => {
       />
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex text-yellow-500">
+          {/* <div className="flex text-yellow-500">
             {Array(service.rating || 5).fill().map((_, i) => (
               <BsStarFill key={i} size={16} />
             ))}
-          </div>
+          </div> */}
           <span className="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 rounded-full">
             {categoryName}
           </span>
         </div>
         <h3 className="text-lg font-semibold text-gray-900">{service.title}</h3>
         <p className="mt-1 text-sm text-gray-600 line-clamp-2">{service.description}</p>
-        <div className="flex items-center justify-between mt-3">
+        {/* <div className="flex items-center justify-between mt-3">
           <div className="text-lg font-bold text-gray-900">${service.price}</div>
           <div className="flex items-center text-sm text-gray-500">
             <Phone size={16} className="mr-1" /> {service.number || "N/A"}
           </div>
-        </div>
+        </div> */}
         {service.location && (
           <div className="mt-2 text-sm text-gray-500">
             {service.location}
@@ -388,6 +391,7 @@ const ServiceCard = ({ service, categoryMap }) => {
         )}
       </div>
     </div>
+    </Link>
   );
 };
 
